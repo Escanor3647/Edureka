@@ -1,0 +1,500 @@
+Problem Statement:
+The IT Head of EDU Bank has asked to build an application to calculate the credit card bill of their customer. Currently all the data of the bank is maintained in excel sheet. As the number of customers are increasing by the day working on excel is becoming difficult to manage the number of customers, credit card types and monthly bills.
+A salesforce application should be built to meet all needs. This application should be able to calculate the Credit Card Bill based on the customer usage and type of card.
+
+Problem Analysis:
+The company offers credit cards to salaried class. 
+The following should be considered while designing the application:
+
+Functional Considerations
+• 01 Customer can have multiple cards and 01 card type (gold, diamond, platinum) can have multiple customers – your Data Model design should be able to handle the same
+• Start and End date of the bill should be start and end date of the month
+• Due Date should be bill end date + 10 days
+• The total bill should be automatically calculated based on the credit card type and customer usage for that month
+
+The total outstanding amount will be summation of the below:
+• Monthly Card Fees
+• Charges per transaction*Total Transaction per month
+• Amount Swiped
+• Cash Withdrawal
+
+Indicative Data Model
+• Customer Details – Name, Phone, Email, SSN# etc.
+• Credit Card Master – Card Type, Monthly Card Fees, Card Limit, Charges per transaction etc.
+• Billing Information – Bill Start, End Date, Due Date, Amount Swiped, Total Transactions, Cash Withdrawal, Total Outstanding Amount
+• Additional object to handle any many to many relationship
+
+Security Model Considerations
+• End Customer (having separate) salesforce login should have only read access on
+o Customer Details
+o Billing Information
+• Logged in customer should have access to only his records i.e. Each customer should be able to see only his credit card and billing records
+
+High Level Requirements
+1. Create an App for the Credit Card Billing
+2. Create the data model and build necessary validation rules like mandatory, Start and End Date should be first and last day of the month
+3. Ensure the page layouts are set up in a logical section for each object
+4. Display all the Billing information (List of Bills) in a tabular format via a VF Page
+a. Create a custom vf tab to view the VF page
+5. Create a VF page AND Apex Class with input of credit card number and output of the corresponding bills for various months
+6. If the Credit Card Type - Monthly Card Fees field data is changed by the administrator, a new comments field on the Credit Card Master object should capture the old monthly fees, before the new value is updated on the record
+7. Create Test Class for point 4 and 5 wherever applicable
+8. Create a field payment status and a VF Page and Apex Class to bulk update payment status of the bills
+
+
+--> Project Below -->
+
+1) Create an App for the Credit Card Billing
+2) Create the data model and build necessary validation rules like mandatory, Start and End Date should be first and last day of the month
+3) Ensure the page layouts are set up in a logical section for each object
+4) Display all the Billing information (List of Bills) in a tabular format via a VF Page a Create a custom vf tab to view the VF page.
+5) Create a VF page AND Apex Class with input of credit card number and output of the corresponding bills for various months:
+6) Create Test Class for point 4 and 5 wherever applicable
+
+
+VF page Code:
+<apex:page controller="Bill_Custom_Create_Controller" >
+    
+    <center class='mainHeadingStyle'>
+        WELCOME TO VISUALFORCE PROGRAMMING! THIS IS MY FIRST PAGE!
+    </center>
+    <br/><br/>
+<center class='normalHeadingStyle'>
+    This is a Bill Management Page 
+</center>
+<style>
+    .mainHeadingStyle {
+    color: green;
+    font-size: 30px;
+    font-weight: bold;
+    }
+    .normalHeadingStyle {
+    color: Orange ;
+    font-size: 20px;
+    font-weight: bold;
+    }
+</style>
+<!-- End - This is just for fun and you to know that HTML coding is supported in VF -->
+<br/><br/>  
+<apex:pageMessages Id="messages"></apex:pageMessages>
+<apex:form >
+    <apex:pageBlock title="Bill Create" Id="mainBlock" rendered="{!createscreen}">
+          <apex:pageBlockSection columns="2" title="Customer Information">
+                <apex:inputField value="{!billRecord.Customer__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.Credit_Card__c}" ></apex:inputField>
+          </apex:pageBlockSection>
+        
+          <apex:pageBlockSection columns="2" title="Usage">
+                <apex:inputField value="{!billRecord.Cash_Withdrawa__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.Amount_Swiped__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.Total_Transactions__c}" ></apex:inputField>
+          </apex:pageBlockSection>
+        
+          <apex:pageBlockSection columns="2" title="Bill Details">
+                <apex:inputField value="{!billRecord.Start_Date__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.End_Date__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.Due_Date__c}" ></apex:inputField>
+                <apex:inputField value="{!billRecord.Total_Outstanding_Amount__c}" ></apex:inputField>
+          </apex:pageBlockSection>
+        
+         <apex:pageBlockButtons >
+               <apex:commandButton value="Save" action="{!createBillRec}" reRender="messages, mainBlock,ListBlockRead,pageForm "></apex:commandButton>
+               <apex:commandButton value="Clear All" action="{!ClearValues}" reRender="messages, mainBlock"></apex:commandButton>
+               <apex:commandButton value="Cancil" action="{!readView}" reRender=""></apex:commandButton>
+        </apex:pageBlockButtons>
+    </apex:pageBlock>
+    
+    <apex:pageBlock title="Bill List" id="ListBlockRead" rendered="{!readscreen}">
+         Search: &nbsp; <apex:inputText value="{!searchText}"></apex:inputText> &nbsp;
+            <apex:commandButton value="Go!" action="{!getbillRecords}"></apex:commandButton><br/><br/>
+         <apex:pageBlockTable value="{!wrapBillRecords}" var="wrapBill" id="listBlockRead" >
+            <apex:column headerValue="Select">
+                <apex:inputCheckbox value="{!wrapBill.selectBox}"></apex:inputCheckbox>
+                </apex:column>
+            <apex:column value="{!wrapBill.billRec.Name}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Customer__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Credit_Card__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Cash_Withdrawa__c}"></apex:column>
+             <apex:column value="{!wrapBill.billRec.Amount_Swiped__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Total_Transactions__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Start_Date__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.End_Date__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Due_Date__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Total_Outstanding_Amount__c}"></apex:column>
+            
+        </apex:pageBlockTable> 
+        <apex:pageBlockButtons >
+             <apex:commandButton value="Create New" action="{!createView}" reRender=""></apex:commandButton>
+            <apex:commandButton value="Edit" action="{!editView}" reRender=""></apex:commandButton>
+            <apex:commandButton value="Delete" action="{!deleteRecords}" reRender="listBlockRead,messages"></apex:commandButton>
+        </apex:pageBlockButtons>
+    </apex:pageBlock>
+    
+    <apex:pageBlock title="Update List" Id="listBlockEdit" rendered="{!editscreen}">
+        <apex:pageBlockTable value="{!wrapbillRecords}" var="wrapbill">
+            <apex:column value="{!wrapBill.billRec.Name}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Customer__c}"></apex:column>
+            <apex:column value="{!wrapBill.billRec.Credit_Card__c}"></apex:column>
+            
+            <apex:column headerValue="Cash Withdrawl" >
+                <apex:inputField value="{!wrapBill.billRec.Cash_Withdrawa__c}" ></apex:inputField>/>
+            </apex:column>
+              <apex:column headerValue="Amount Swipped" >
+                <apex:inputField value="{!wrapBill.billRec.Amount_Swiped__c}" ></apex:inputField>/>
+            </apex:column>
+            
+            <apex:column headerValue=" Total Transaction " >
+                <apex:inputField value="{!wrapBill.billRec.Total_Transactions__c}" ></apex:inputField>/>
+            </apex:column>
+            
+            <apex:column headerValue=" Start Bill Date">
+                <apex:inputField value="{!wrapBill.billRec.Start_Date__c}" ></apex:inputField>/>
+            </apex:column>
+            
+            <apex:column headerValue=" Bill End Date">
+                <apex:inputField value="{!wrapBill.billRec.End_Date__c}"></apex:inputField>/>
+            </apex:column>
+            <apex:column headerValue="Due Date">
+                    <apex:inputField value="{!wrapBill.billRec.Due_Date__c}"></apex:inputField>
+                </apex:column>
+            
+            <apex:column value="{!wrapBill.billRec.Total_Outstanding_Amount__c}"></apex:column>
+        </apex:pageBlockTable>
+        <apex:pageBlockButtons >
+            <apex:commandButton value="Update" action="{!saveRecords}" reRender=""></apex:commandButton>
+            
+        </apex:pageBlockButtons>
+        
+    </apex:pageBlock>
+    
+    
+</apex:form>
+</apex:page>
+
+Apex class:
+public class Bill_Custom_Create_Controller {
+    public Billing__c billRecord{get;set;}
+    public list<Billing__c> billRecords{get;set;}
+    public List<WrapperBill> wrapBillRecords {get;set;}
+    public Boolean readscreen {get;set;}
+    public Boolean editscreen {get;set;}
+    public Boolean createscreen {get;set;}
+    public String searchText {get;set;}
+    
+    public Bill_Custom_Create_Controller(){
+        billRecord = new Billing__c (); 
+        billRecords = new list<Billing__c> ();
+        wrapBillRecords = new List<WrapperBill>();
+        readView();
+        getbillRecords();
+    }
+    public void createBillRec (){
+        INSERT billRecord ;
+        if(billRecord.ID != null) {
+            ApexPages.Message creationMessage = new  ApexPages.Message(ApexPages.Severity.INFO , 'Bill Record Created Succesfulyy !!!');
+            ApexPages.addMessage(creationMessage);
+            
+            Billing__c billRecordInserted  = [SELECT ID, Total_Outstanding_Amount__c FROM Billing__c WHERE ID = :billRecord.ID ];
+            billRecord.Total_Outstanding_Amount__c = billRecordInserted .Total_Outstanding_Amount__c ;
+        }
+        getbillRecords();
+      
+        
+    }
+    public void ClearValues (){
+        billRecord = new Billing__c (); 
+        ApexPages.getMessages().clear();
+    }
+    public void getbillRecords(){
+        if(searchText == '' || searchText == null) {
+        billRecords = [SELECT ID , Name , Customer__c, Credit_Card__c, Cash_Withdrawa__c,Amount_Swiped__c, Total_Transactions__c, Start_Date__c,End_Date__c, Due_Date__c,Total_Outstanding_Amount__c 
+                       FROM Billing__c  order by Name desc];
+        }else {
+            String search = '%' + searchText + '%'; //like search
+            billRecords = [Select ID, Name, Customer__c, Credit_Card__c, Cash_Withdrawa__c, Total_Transactions__c,Amount_Swiped__c, 
+                                Total_Outstanding_Amount__c, Start_Date__c, End_Date__c,
+                                    Due_Date__c FROM Billing__c WHERE Credit_Card__r.Name like :search order by Name desc];   
+        }
+        wrapBillRecords = new List<WrapperBill>();
+        for(Billing__c bill : billRecords) {
+            WrapperBill obj = new WrapperBill(false, bill);    
+            wrapBillRecords.add(obj);
+        }
+    }
+    public class WrapperBill {
+        public Boolean selectBox {get;set;}
+        public Billing__c billRec {get;set;}
+        
+        public WrapperBill(Boolean selectValue, Billing__c billRecInput) {
+            this.selectBox = selectValue;
+            this.billRec = billRecInput;
+        }
+    }
+    public void saveRecords() {
+        List<Billing__c> bills = new List<Billing__c>();
+        for(WrapperBill wrap : wrapBillRecords) {
+            bills.add(wrap.billRec);
+        }
+        UPDATE billRecords ;
+        getbillRecords();
+        readView();
+        ApexPages.Message updateMessage = new  ApexPages.Message(ApexPages.Severity.INFO , 'Bill Record Updated  Succesfulyy !!!');
+        ApexPages.addMessage(updateMessage); 
+    }
+    public void deleteRecords(){
+     system.debug('The Selected Records with select box  are '+wrapBillRecords);
+        list<Billing__c> billToDelete = new list<Billing__c>();
+        for (WrapperBill  wrapRecord : wrapBillRecords){
+            if(wrapRecord.selectBox ){
+          billToDelete.add(wrapRecord.billRec);
+            }
+        }
+        DELETE billToDelete ;
+        getbillRecords();
+        ApexPages.Message deleteMessage = new  ApexPages.Message(ApexPages.Severity.INFO , 'Bill Record Deleted  Succesfulyy !!!');
+        ApexPages.addMessage(deleteMessage);
+    }
+    
+    public void editView(){
+        createscreen = false ;
+        readscreen = false ;
+        editscreen = true ;
+        
+    }
+    public void createView(){
+        createscreen = true ;
+        readscreen = false ;
+        editscreen = false ;
+        
+    }
+        public void cancel() {
+    	billRecord.Customer__c = [Select ID from Customer__c LIMIT 1].Id;
+        billRecord.Credit_Card__c = [Select ID from Credit_Card__c LIMIT 1].Id;     
+        readView();
+    }
+    public void readView(){
+        createscreen = false ;
+        readscreen = true ;
+        editscreen = false ;
+        
+        
+    }
+}
+
+Its  Test Class:
+@isTest
+public class Bill_Custom_Create_Controller_Test {
+    @isTest static void billCustomTestMethod(){
+        Customer__c insCustRecord = new Customer__c () ;
+        insCustRecord.Name = 'Manu Raja';
+        insCustRecord.Phone__c = '8737729932';
+        insCustRecord.Email__c = 'Manuraja@gmail.com';
+        INSERT insCustRecord ;   
+        
+        // Create Credit Card Data 
+        
+        Credit_Card__c insCredRecord = new Credit_Card__c ();
+        insCredRecord.Name = 'Gold Credit Card';
+        insCredRecord.Monthly_Card_Fee__c = 500;
+        insCredRecord.Card_Limit__c = 85000 ;
+        insCredRecord.Card_type__c = 'diamond' ;
+        insCredRecord.Charges_Per_Transaction__c = 2 ;
+        INSERT  insCredRecord ;
+        
+		Billing__c insBillRec = new Billing__c() ;
+        insBillRec.Customer__c = insCustRecord.Id;
+        insBillRec.Credit_Card__c = insCredRecord.Id;
+        insBillRec.Start_Date__c = Date.newInstance(2021,02, 01);
+        insBillRec.End_Date__c = Date.newInstance(2021,02, 28);
+        insBillRec.Cash_Withdrawa__c = 10000;
+        insBillRec.Amount_Swiped__c = 300;
+        insBillRec.Total_Transactions__c = 10 ;
+        INSERT insBillRec;
+		        
+        Test.startTest();
+        Bill_Custom_Create_Controller objBillCustom = new Bill_Custom_Create_Controller();
+        objBillCustom.ClearValues();
+        objBillCustom.saveRecords();
+        objBillCustom.deleteRecords();
+        objBillCustom.editView();
+        objBillCustom.createView();
+        objBillCustom.cancel();
+       Test.stopTest();
+
+    }    
+}
+
+Total Outstanding Amount:
+Trigger:
+trigger BillTrigger on Billing__c(before insert, before update, before delete, after insert, after update, after delete, after undelete) 
+{
+    if(Trigger.isBefore){
+              if(Trigger.isInsert){
+            BillTriggerHandler.calculateTotalOutsnatdingBill(Trigger.new) ;
+           
+        }
+        if(Trigger.isUpdate){
+            BillTriggerHandler.calculateTotalOutsnatdingBill(Trigger.new) ;
+        }
+        
+        if(Trigger.isdelete){
+            
+        }
+    }
+}
+
+Apex trigger Handler
+public class BillTriggerHandler {
+    public static void calculateTotalOutsnatdingBill(list < Billing__c>  billingList){
+        try {
+            // Collecting Credit Card IDS  
+            set < id > CreditCardIDS = new set < id > ();
+            
+            for (Billing__c billRecord : billingList ){
+                CreditCardIDS.add(billRecord.Credit_Card__c);
+            }
+            
+            Map<id ,Credit_Card__c> CreditCardMap = new map<id, Credit_Card__c> ();
+            for (Credit_Card__c creditRecord :[select ID,Monthly_Card_Fee__c,Charges_Per_Transaction__c from Credit_Card__c where ID in :CreditCardIDS ]){
+                CreditCardMap.put (creditRecord.ID , creditRecord);
+            }
+            System.debug('CreditCardMap---->'+CreditCardMap);
+            for (Billing__c billRecord : billingList){
+                System.debug('billRecord---->'+billRecord);
+                billRecord.Total_Outstanding_Amount__c = billRecord.Cash_Withdrawa__c + billRecord.Amount_Swiped__c+
+                    billRecord.Total_Transactions__c *
+                    CreditCardMap.get(billRecord.Credit_Card__c).Charges_Per_Transaction__c +
+                    CreditCardMap.get(billRecord.Credit_Card__c).Monthly_Card_Fee__c  ;
+            }       
+        }  catch (QueryException e) {
+            Utilities.sendErrorMail(e.getMessage(), 'BillTriggerHandler', UserInfo.getFirstName() + ' ' + UserInfo.getLastName());
+        }
+    }
+Its Test class:
+// This Class Will Test All the Functionality Of Trigger Class 
+@isTest
+public class BillTriggerTest {
+    
+    //Creates data for your testing to be done. 
+    // Ctreate Customer Data For Testing.
+    public @TestSetup static void createData(){
+        Customer__c insCustRecord = new Customer__c () ;
+        insCustRecord.Name = 'Manu Raja';
+        insCustRecord.Phone__c = '8737729932';
+        insCustRecord.Email__c = 'Manuraja@gmail.com';
+        INSERT insCustRecord ;   
+        
+        // Create Credit Card Data 
+        
+        Credit_Card__c insCredRecord = new Credit_Card__c ();
+        insCredRecord.Name = 'Gold Credit Card';
+        insCredRecord.Monthly_Card_Fee__c = 500;
+        insCredRecord.Card_Limit__c = 85000 ;
+        insCredRecord.Card_type__c = 'diamond' ;
+        insCredRecord.Charges_Per_Transaction__c = 2 ;
+        INSERT  insCredRecord ;
+    } 
+    public @isTest static void testTotalAmountCalcAndLogCustEntry(){
+        
+        // Query the Customer Data & Credit Card Data
+        
+        Customer__c insCustRecord= [SELECT ID, Name, Phone__c,Email__c FROM Customer__c WHERE Name = 'Manu Raja' ];
+        Credit_Card__c insCredRecord = [SELECT ID, Name,Monthly_Card_Fee__c,Card_Limit__c,Charges_Per_Transaction__c 
+                                        FROM Credit_Card__c WHERE Name = 'Gold Credit Card']; 
+        
+        // INSERT Bill Record  
+        
+        Billing__c insBillRec = new Billing__c() ;
+        insBillRec.Customer__c = insCustRecord.Id;
+        insBillRec.Credit_Card__c = insCredRecord.Id;
+        insBillRec.Start_Date__c = Date.newInstance(2021,02, 01);
+        insBillRec.End_Date__c = Date.newInstance(2021,02, 28);
+        insBillRec.Cash_Withdrawa__c = 10000;
+        insBillRec.Amount_Swiped__c = 300;
+        insBillRec.Total_Transactions__c = 10 ;
+        INSERT insBillRec;
+        //  Step 1---->Testing Total OUtstandingh Bill During Bill Insert
+        Billing__c billRec = [SELECT Id,Name,Total_Outstanding_Amount__c FROM   Billing__c
+                              WHERE Customer__c = :insCustRecord.ID AND Credit_Card__c = :insCredRecord.ID];
+        System.debug('billRec---->'+billRec);
+        system.assertEquals(10820, billRec.Total_Outstanding_Amount__c);
+        
+        // Step 2------> Tetsing Log Are Genrated in Customer When Insert a Bill Record is Inserted.
+        Customer__c customerRecordUpdatedFirst = [Select ID, Bill_Log__c from Customer__c where ID = :insCustRecord.ID];
+        //System.assertEquals(billRec.Name+'-2021-02-05 00:00:00', customerRecordUpdatedFirst.Bill_Log__c);
+        
+        //Step 3--------> Testing Total OutStanding Bill During Bill Update first.
+        insBillRec.Cash_Withdrawa__c = 20000;
+        UPDATE insBillRec ;
+        Billing__c billRecupdatedfirst = [SELECT Id,Name,Total_Outstanding_Amount__c FROM   Billing__c
+                                          WHERE Customer__c = :insCustRecord.ID AND Credit_Card__c = :insCredRecord.ID];
+        system.assertEquals(20820, billRecupdatedfirst.Total_Outstanding_Amount__c);
+        
+        // Step4---------> Testing Log Generated in Customer During Update a Bill Record.
+        
+        Customer__c customerRecordUpdatedsecond = [Select ID, Bill_Log__c from Customer__c where ID = :insCustRecord.ID];
+        //System.assertEquals(billRec.Name+'-2021-02-05 00:00:00', customerRecordUpdatedsecond.Bill_Log__c);
+        
+        
+        
+    }
+}
+
+7) If the Credit Card Type -Monthly Card Fees field data is changed by the administrator, a new comments field on the Credit Card Master object should capture the old monthly fees, before the new value is updated on the record.
+
+Trigger:
+
+trigger CreditCard on Credit_Card__c (before Update) {
+    if(trigger.isBefore && trigger.isUpdate){
+        for(Credit_Card__c ccd : trigger.new){
+            if(trigger.oldMap.get(ccd.Id).Monthly_Card_Fee__c != ccd.Monthly_Card_Fee__c && trigger.oldMap.get(ccd.Id).Card_type__c != ccd.Card_type__c){
+                ccd.Comments__c = trigger.oldMap.get(ccd.Id).Monthly_Card_Fee__c; 
+            }
+        }
+    }
+}
+
+8) Security Model Considerations
+End Customer (having separate) salesforce login should have only read access on 
+•	Customer Details
+•	Billing Information
+Logged in customer should have access to only his records i.e. Each customer should be able to see only his  credit card and billing records
+
+
+9) Create a field payment status and a VF Page and Apex Class to bulk update payment status of the bills
+
+VF Page:
+<apex:page controller="PaymentStatusVFController">
+    <apex:form>
+        <apex:sectionHeader title="Payment Status Update"/>
+    	<apex:pageBlock>
+        	<apex:pageBlockSection>
+                <apex:inputField label="Payment status" value="{!objBilling.Payment_Status__c}"/>
+            </apex:pageBlockSection>
+            <apex:pageBlockButtons>
+            	<apex:commandButton action="{!saveBills}" value="Save"/>
+            </apex:pageBlockButtons>
+        </apex:pageBlock>
+    </apex:form>
+</apex:page>
+Apex class:
+public class PaymentStatusVFController {
+    public Billing__c objBilling{get;set;}
+    
+    public PaymentStatusVFController(){
+        objBilling = new Billing__c();
+    }
+    
+    public void saveBills(){
+        String psValue = objBilling.Payment_Status__c;
+        System.debug('psValue---->'+psValue);
+        List<Billing__c> lstUpdateBill = new List<Billing__c>();
+        for(Billing__c bill : [SELECT Id,Payment_Status__c FROM Billing__c]){
+            bill.Payment_Status__c = psValue;
+            lstUpdateBill.add(bill);
+        }
+        if(!lstUpdateBill.isEmpty())
+            update lstUpdateBill;
+    }
+
+
